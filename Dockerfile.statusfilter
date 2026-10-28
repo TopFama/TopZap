@@ -1,0 +1,23 @@
+FROM chatwoot/chatwoot:v4.19.1
+COPY app/builders/v2/reports/base_summary_builder.rb /app/app/builders/v2/reports/base_summary_builder.rb
+COPY app/builders/v2/reports/drilldown_builder.rb /app/app/builders/v2/reports/drilldown_builder.rb
+COPY app/builders/v2/reports/timeseries/base_timeseries_builder.rb /app/app/builders/v2/reports/timeseries/base_timeseries_builder.rb
+COPY app/controllers/api/v2/accounts/reports_controller.rb /app/app/controllers/api/v2/accounts/reports_controller.rb
+COPY app/controllers/api/v2/accounts/summary_reports_controller.rb /app/app/controllers/api/v2/accounts/summary_reports_controller.rb
+COPY app/helpers/api/v2/accounts/reports_helper.rb /app/app/helpers/api/v2/accounts/reports_helper.rb
+COPY app/services/reports/data_source.rb /app/app/services/reports/data_source.rb
+COPY app/services/reports/raw_data_source.rb /app/app/services/reports/raw_data_source.rb
+COPY app/controllers/api/v1/accounts/agents_controller.rb /app/app/controllers/api/v1/accounts/agents_controller.rb
+COPY app/controllers/api/v1/accounts/bulk_actions_controller.rb /app/app/controllers/api/v1/accounts/bulk_actions_controller.rb
+COPY app/controllers/api/v1/accounts/conversations/assignments_controller.rb /app/app/controllers/api/v1/accounts/conversations/assignments_controller.rb
+COPY app/models/account_user.rb /app/app/models/account_user.rb
+COPY app/services/conversations/assignment_rules_service.rb /app/app/services/conversations/assignment_rules_service.rb
+COPY app/views/api/v1/models/_agent.json.jbuilder /app/app/views/api/v1/models/_agent.json.jbuilder
+COPY lib/custom_exceptions/conversation.rb /app/lib/custom_exceptions/conversation.rb
+COPY db/migrate/20261028120000_add_max_open_conversations_to_account_users.rb /app/db/migrate/20261028120000_add_max_open_conversations_to_account_users.rb
+COPY db/schema.rb /app/db/schema.rb
+COPY config/locales/en.yml /app/config/locales/en.yml
+COPY config/locales/pt_BR.yml /app/config/locales/pt_BR.yml
+COPY public/brand-assets/topzap_logo.png /app/public/brand-assets/topzap_logo.png
+RUN rm -rf /app/public/vite
+COPY public/vite /app/public/vite
