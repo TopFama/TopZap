@@ -13,6 +13,7 @@ import {
 import messageReadActions from './actions/messageReadActions';
 import messageTranslateActions from './actions/messageTranslateActions';
 import * as Sentry from '@sentry/vue';
+import { useAlert } from 'dashboard/composables';
 import {
   handleVoiceCallCreated,
   handleVoiceCallUpdated,
@@ -224,8 +225,15 @@ const actions = {
         assignee: response.data,
         assigneeType,
       });
+      return true;
     } catch (error) {
-      // Handle error
+      // Assignment rules (agent limit, waiting order) reject with a message; undo the optimistic update
+      const message = error?.response?.data?.error;
+      if (message) {
+        useAlert(message);
+        dispatch('getConversation', conversationId);
+      }
+      return false;
     }
   },
 

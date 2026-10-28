@@ -82,6 +82,11 @@
           "PLACEHOLDER": "Por favor, selecione a disponibilidade do agente",
           "ERROR": "A disponibilidade é necessária"
         },
+        "MAX_OPEN_CONVERSATIONS": {
+          "LABEL": "Máximo de conversas abertas atribuídas",
+          "PLACEHOLDER": "Sem limite",
+          "ERROR": "Informe um número inteiro maior que zero"
+        },
         "SUBMIT": "Editar agente"
       },
       "BUTTON_TEXT": "Alterar",

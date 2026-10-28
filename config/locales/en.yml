@@ -113,6 +113,9 @@ en:
       sso_not_enabled: SAML SSO is not enabled for this installation
       multi_account_invitation_not_allowed: Users associated with another account cannot be added while SAML is enabled
     conversations:
+      assignment:
+        limit_reached: '%{agent_name} has reached the limit of %{limit} open assigned conversations'
+        oldest_first: 'You can only assign the unassigned conversation waiting the longest for a reply. Assign conversation #%{display_id} first'
       resolved: Conversation is resolved and does not accept new messages
       unread_counts:
         feature_not_enabled: Conversation unread counts feature not enabled for this account

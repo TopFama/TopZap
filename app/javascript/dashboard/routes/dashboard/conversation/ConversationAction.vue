@@ -103,8 +103,8 @@ export default {
             agentId,
             assigneeType,
           })
-          .then(() => {
-            useAlert(this.$t('CONVERSATION.CHANGE_AGENT'));
+          .then(assigned => {
+            if (assigned) useAlert(this.$t('CONVERSATION.CHANGE_AGENT'));
           });
       },
     },
