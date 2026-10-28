@@ -7,6 +7,8 @@ import { getUnixStartOfDay, getUnixEndOfDay } from 'helpers/DateHelper';
 import subDays from 'date-fns/subDays';
 import differenceInDays from 'date-fns/differenceInDays';
 import ActiveFilterChip from './Filters/v3/ActiveFilterChip.vue';
+import MultiSelect from 'dashboard/components-next/filter/inputs/MultiSelect.vue';
+import { useConversationFilterContext } from 'dashboard/components-next/filter/provider';
 import WootDatePicker from 'dashboard/components/ui/DatePicker/DatePicker.vue';
 import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
 import { GROUP_BY_FILTER } from '../constants';
@@ -39,6 +41,10 @@ const props = defineProps({
   showEntityFilter: {
     type: Boolean,
     default: true,
+  },
+  showStatusFilter: {
+    type: Boolean,
+    default: false,
   },
 });
 
@@ -77,6 +83,12 @@ const activeFilterType = ref('');
 const customDateRange = ref([subDays(new Date(), 6), new Date()]);
 const selectedDateRange = ref(DATE_RANGE_TYPES.LAST_7_DAYS);
 const businessHoursSelected = ref(false);
+const selectedStatuses = ref([]);
+const { filterTypes } = useConversationFilterContext();
+const statusFilter = computed(() => filterTypes.value[0]);
+const statusOptions = computed(() =>
+  statusFilter.value.options.filter(({ id }) => id !== 'all')
+);
 const groupBy = ref(GROUP_BY_FILTER[1]);
 const groupByfilterItemsList = ref([{ id: 1, name: 'Day' }]);
 
@@ -175,6 +187,7 @@ const updateURLParams = () => {
     businessHours: businessHoursSelected.value,
     groupBy: isGroupByPossible.value ? groupBy.value.id : null,
     range: selectedDateRange.value,
+    status: selectedStatuses.value.map(({ id }) => id),
   });
 
   router.replace({ query: { ...params } });
@@ -185,6 +198,7 @@ const emitChange = () => {
     from: from.value,
     to: to.value,
     businessHours: businessHoursSelected.value,
+    status: selectedStatuses.value.map(({ id }) => id),
   };
 
   if (props.showGroupBy) {
@@ -297,6 +311,12 @@ const initializeFromURL = () => {
     businessHoursSelected.value = urlParams.businessHours;
   }
 
+  if (props.showStatusFilter) {
+    selectedStatuses.value = statusOptions.value.filter(({ id }) =>
+      urlParams.status?.includes(id)
+    );
+  }
+
   if (urlParams.groupBy) {
     const groupByValue = GROUP_BY_FILTER[urlParams.groupBy];
     if (groupByValue) {
@@ -327,6 +347,16 @@ onMounted(() => {
     />
 
     <div class="flex gap-2 items-center w-full">
+      <template v-if="showStatusFilter">
+        <span class="text-sm text-n-slate-11">{{ statusFilter.label }}</span>
+        <MultiSelect
+          v-model="selectedStatuses"
+          :options="statusOptions"
+          :title="statusFilter.label"
+          @update:model-value="emitChange"
+        />
+      </template>
+
       <ActiveFilterChip
         v-if="showEntityFilter"
         :id="appliedFilters[getFilterKey()]"

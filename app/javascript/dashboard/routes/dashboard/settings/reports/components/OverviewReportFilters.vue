@@ -1,18 +1,24 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getUnixStartOfDay, getUnixEndOfDay } from 'helpers/DateHelper';
 import subDays from 'date-fns/subDays';
 import WootDatePicker from 'dashboard/components/ui/DatePicker/DatePicker.vue';
 import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
+import MultiSelect from 'dashboard/components-next/filter/inputs/MultiSelect.vue';
+import { useConversationFilterContext } from 'dashboard/components-next/filter/provider';
 import {
   generateReportURLParams,
   parseReportURLParams,
 } from '../helpers/reportFilterHelper';
 import { DATE_RANGE_TYPES } from 'dashboard/components/ui/DatePicker/helpers/DatePickerHelper';
 
-defineProps({
+const props = defineProps({
   disabled: {
+    type: Boolean,
+    default: false,
+  },
+  showStatusFilter: {
     type: Boolean,
     default: false,
   },
@@ -26,6 +32,12 @@ const router = useRouter();
 const customDateRange = ref([subDays(new Date(), 6), new Date()]);
 const selectedDateRange = ref(DATE_RANGE_TYPES.LAST_7_DAYS);
 const businessHoursSelected = ref(false);
+const selectedStatuses = ref([]);
+const { filterTypes } = useConversationFilterContext();
+const statusFilter = computed(() => filterTypes.value[0]);
+const statusOptions = computed(() =>
+  statusFilter.value.options.filter(({ id }) => id !== 'all')
+);
 
 const updateURLParams = () => {
   const params = generateReportURLParams({
@@ -33,6 +45,7 @@ const updateURLParams = () => {
     to: getUnixEndOfDay(customDateRange.value[1]),
     businessHours: businessHoursSelected.value,
     range: selectedDateRange.value,
+    status: selectedStatuses.value.map(({ id }) => id),
   });
 
   router.replace({ query: { ...params } });
@@ -44,6 +57,7 @@ const emitChange = () => {
     from: getUnixStartOfDay(customDateRange.value[0]),
     to: getUnixEndOfDay(customDateRange.value[1]),
     businessHours: businessHoursSelected.value,
+    status: selectedStatuses.value.map(({ id }) => id),
   });
 };
 
@@ -77,6 +91,12 @@ const initializeFromURL = () => {
   if (urlParams.businessHours) {
     businessHoursSelected.value = urlParams.businessHours;
   }
+
+  if (props.showStatusFilter) {
+    selectedStatuses.value = statusOptions.value.filter(({ id }) =>
+      urlParams.status?.includes(id)
+    );
+  }
 };
 
 onMounted(() => {
@@ -90,12 +110,23 @@ onMounted(() => {
     class="flex flex-col justify-between gap-3 md:flex-row"
     :class="{ 'pointer-events-none opacity-50': disabled }"
   >
-    <div class="flex flex-col flex-wrap items-start gap-2 md:flex-row">
+    <div
+      class="flex flex-col flex-wrap items-start gap-2 md:flex-row md:items-center"
+    >
       <WootDatePicker
         v-model:date-range="customDateRange"
         v-model:range-type="selectedDateRange"
         @date-range-changed="onDateRangeChange"
       />
+      <template v-if="showStatusFilter">
+        <span class="text-sm text-n-slate-11">{{ statusFilter.label }}</span>
+        <MultiSelect
+          v-model="selectedStatuses"
+          :options="statusOptions"
+          :title="statusFilter.label"
+          @update:model-value="emitChange"
+        />
+      </template>
     </div>
     <div class="flex items-center">
       <span class="mx-2 text-sm whitespace-nowrap">

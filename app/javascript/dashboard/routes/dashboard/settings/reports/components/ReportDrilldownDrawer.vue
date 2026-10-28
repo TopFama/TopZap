@@ -27,6 +27,7 @@ const props = defineProps({
   id: { type: [String, Number], default: null },
   groupBy: { type: String, default: '' },
   businessHours: { type: Boolean, default: false },
+  status: { type: Array, default: () => [] },
   bucketValue: { type: Number, default: null },
   isAverageMetric: { type: Boolean, default: false },
   canPrev: { type: Boolean, default: false },
@@ -142,6 +143,7 @@ const fetchDrilldown = () => {
     id: props.id,
     groupBy: props.groupBy,
     businessHours: props.businessHours,
+    status: props.status,
   });
 };
 

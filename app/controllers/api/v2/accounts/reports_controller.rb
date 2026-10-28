@@ -111,7 +111,7 @@ class Api::V2::Accounts::ReportsController < Api::V1::Accounts::BaseController
       type: params[:type].to_sym,
       id: params[:id],
       group_by: params[:group_by],
-      business_hours: ActiveModel::Type::Boolean.new.cast(params[:business_hours])
+      business_hours: ActiveModel::Type::Boolean.new.cast(params[:business_hours]), status: params[:status]
     }
   end
 
@@ -142,7 +142,7 @@ class Api::V2::Accounts::ReportsController < Api::V1::Accounts::BaseController
 
   def drilldown_params
     permitted_params = params.permit(
-      :metric, :id, :since, :until, :group_by, :timezone_offset, :bucket_timestamp, :page, :per_page
+      :metric, :id, :since, :until, :group_by, :timezone_offset, :bucket_timestamp, :page, :per_page, status: []
     ).to_h.symbolize_keys
     permitted_params.merge(
       type: (params[:type].presence || 'account').to_sym,

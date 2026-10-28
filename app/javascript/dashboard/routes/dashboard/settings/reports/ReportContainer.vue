@@ -55,6 +55,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    status: {
+      type: Array,
+      default: () => [],
+    },
     accountSummaryKey: {
       type: String,
       default: 'getAccountSummary',
@@ -249,6 +253,7 @@ export default {
         id: this.selectedItemId,
         groupBy: this.groupBy?.period,
         businessHours: this.businessHours,
+        status: this.status,
       };
     },
     navigateDrilldown(direction) {
@@ -350,6 +355,7 @@ export default {
     :type="drilldownRequest?.type"
     :group-by="drilldownRequest?.groupBy"
     :business-hours="drilldownRequest?.businessHours"
+    :status="drilldownRequest?.status"
     :can-prev="canDrilldownPrev"
     :can-next="canDrilldownNext"
     @navigate="navigateDrilldown"
