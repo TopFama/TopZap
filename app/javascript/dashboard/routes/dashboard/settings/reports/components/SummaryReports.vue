@@ -41,6 +41,7 @@ const store = useStore();
 const from = ref(0);
 const to = ref(0);
 const businessHours = ref(false);
+const status = ref([]);
 import { useI18n } from 'vue-i18n';
 import SummaryReportLink from './SummaryReportLink.vue';
 
@@ -137,6 +138,7 @@ const fetchReportsWithRetry = async () => {
     since: from.value,
     until: to.value,
     businessHours: businessHours.value,
+    status: status.value,
   };
   try {
     await store.dispatch(props.actionKey, params);
@@ -160,6 +162,7 @@ const onFilterChange = updatedFilter => {
   from.value = updatedFilter.from;
   to.value = updatedFilter.to;
   businessHours.value = updatedFilter.businessHours;
+  status.value = updatedFilter.status;
   fetchAllData();
 };
 
@@ -194,6 +197,7 @@ const downloadReports = () => {
       to: to.value,
       fileName,
       businessHours: businessHours.value,
+      status: status.value,
     };
     store.dispatch(dispatchMethods[props.type], params);
   }
@@ -205,6 +209,7 @@ defineExpose({ downloadReports });
 <template>
   <OverviewReportFilters
     :disabled="isLoading"
+    :show-status-filter="type === 'agent'"
     @filter-change="onFilterChange"
   />
   <div

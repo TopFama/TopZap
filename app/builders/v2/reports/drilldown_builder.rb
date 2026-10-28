@@ -51,13 +51,15 @@ class V2::Reports::DrilldownBuilder
   end
 
   def drilldown_scope
-    if message_metric?
-      message_scope
-    elsif conversation_metric?
-      conversation_scope
-    else
-      reporting_event_scope
-    end
+    relation = if message_metric?
+                 message_scope
+               elsif conversation_metric?
+                 conversation_scope
+               else
+                 reporting_event_scope
+               end
+    Reports::DataSource.new(account: account, status: params[:status])
+                       .filter_by_conversation_status(relation, column: conversation_metric? ? :id : :conversation_id)
   end
 
   def message_scope

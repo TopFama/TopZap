@@ -11,7 +11,7 @@ import DropdownSection from 'next/dropdown-menu/base/DropdownSection.vue';
 import DropdownBody from 'next/dropdown-menu/base/DropdownBody.vue';
 import DropdownItem from 'next/dropdown-menu/base/DropdownItem.vue';
 
-const { options, maxChips, dropdownMaxHeight } = defineProps({
+const { options, maxChips, dropdownMaxHeight, title } = defineProps({
   options: {
     type: Array,
     required: true,
@@ -23,6 +23,10 @@ const { options, maxChips, dropdownMaxHeight } = defineProps({
   dropdownMaxHeight: {
     type: String,
     default: 'max-h-80',
+  },
+  title: {
+    type: String,
+    default: '',
   },
 });
 
@@ -159,6 +163,9 @@ const toggleOption = option => {
       </Button>
     </template>
     <DropdownBody class="top-0 min-w-48 z-50" strong>
+      <div v-if="title" class="px-2 text-sm font-semibold text-n-slate-12">
+        {{ title }}
+      </div>
       <div v-if="showSearch" class="relative">
         <Icon class="absolute size-4 left-2 top-2" icon="i-lucide-search" />
         <input

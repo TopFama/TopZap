@@ -60,10 +60,14 @@ class Reports::RawDataSource < Reports::DataSource
   end
 
   def average_scope
-    scope.reporting_events.where(name: raw_event_name, created_at: range, account_id: account.id)
+    filter_by_conversation_status(scope.reporting_events.where(name: raw_event_name, created_at: range, account_id: account.id))
   end
 
   def count_scope
+    filter_by_conversation_status(unfiltered_count_scope, column: metric.to_s == 'conversations_count' ? :id : :conversation_id)
+  end
+
+  def unfiltered_count_scope
     case metric.to_s
     when 'conversations_count'
       scope.conversations.where(account_id: account.id, created_at: range)
@@ -98,17 +102,16 @@ class Reports::RawDataSource < Reports::DataSource
   end
 
   def summary_scope
-    scope = account.reporting_events.where(created_at: range)
+    scope = filter_by_conversation_status(account.reporting_events.where(created_at: range))
     return scope.joins(:conversation) if dimension_type == 'team'
 
     scope
   end
 
   def summary_conversation_counts
-    account.conversations
-           .where(created_at: range)
-           .group(summary_conversation_group_by_key)
-           .count
+    filter_by_conversation_status(account.conversations.where(created_at: range), column: :id)
+      .group(summary_conversation_group_by_key)
+      .count
   end
 
   def merge_summary_results(metric_results, conversation_counts)

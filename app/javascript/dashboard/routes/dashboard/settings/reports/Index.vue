@@ -32,6 +32,7 @@ export default {
       to: 0,
       groupBy: GROUP_BY_FILTER[1],
       businessHours: false,
+      status: [],
     };
   },
   methods: {
@@ -67,13 +68,14 @@ export default {
       });
     },
     getRequestPayload() {
-      const { from, to, groupBy, businessHours } = this;
+      const { from, to, groupBy, businessHours, status } = this;
 
       return {
         from,
         to,
         groupBy: groupBy?.period,
         businessHours,
+        status,
       };
     },
     downloadConversationReports() {
@@ -88,9 +90,11 @@ export default {
         to,
         fileName,
         businessHours: this.businessHours,
+        status: this.status,
       });
     },
-    onFilterChange({ from, to, groupBy, businessHours }) {
+    onFilterChange({ from, to, groupBy, businessHours, status }) {
+      this.status = status;
       this.from = from;
       this.to = to;
       this.groupBy = groupBy;
@@ -119,6 +123,7 @@ export default {
     <ReportFilters
       :show-entity-filter="false"
       show-group-by
+      show-status-filter
       @filter-change="onFilterChange"
     />
     <ReportContainer
@@ -126,6 +131,7 @@ export default {
       :from="from"
       :to="to"
       :business-hours="businessHours"
+      :status="status"
     />
   </div>
 </template>
