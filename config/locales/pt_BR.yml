@@ -111,7 +111,7 @@ pt_BR:
       resolved: A conversa está resolvida e não aceita novas mensagens
       assignment:
         limit_reached: '%{agent_name} atingiu o limite de %{limit} conversas abertas atribuídas'
-        oldest_first: 'Você só pode atribuir a conversa não atribuída com maior tempo de espera por resposta. Atribua primeiro a conversa #%{display_id}'
+        oldest_first: 'Você só pode atribuir a conversa não atribuída com a última atividade mais antiga. Atribua primeiro a conversa #%{display_id}'
       unread_counts:
         feature_not_enabled: O recurso de contagem de conversas não lidas não está habilitado para esta conta
     data_import:
