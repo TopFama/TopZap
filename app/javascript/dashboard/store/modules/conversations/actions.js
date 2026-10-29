@@ -329,7 +329,7 @@ const actions = {
       });
       return true;
     } catch (error) {
-      // Assignment rules (agent limit, waiting order) reject with a message; undo the optimistic update
+      // Assignment rules (agent limit, queue order) reject with a message; undo the optimistic update
       const message = error?.response?.data?.error;
       if (message) {
         useAlert(message);
@@ -396,8 +396,12 @@ const actions = {
         status: updatedStatus,
         snoozedUntil: updatedSnoozedUntil,
       });
+      return true;
     } catch (error) {
-      // Handle error
+      // Assignment rules reject reopening into an agent over their open conversation limit
+      const message = error?.response?.data?.error;
+      if (message) useAlert(message);
+      return false;
     }
   },
 

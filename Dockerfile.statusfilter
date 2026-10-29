@@ -13,7 +13,10 @@ COPY app/controllers/api/v1/accounts/conversations/assignments_controller.rb /ap
 COPY app/models/account_user.rb /app/app/models/account_user.rb
 COPY app/services/conversations/assignment_rules_service.rb /app/app/services/conversations/assignment_rules_service.rb
 COPY app/views/api/v1/models/_agent.json.jbuilder /app/app/views/api/v1/models/_agent.json.jbuilder
-COPY lib/custom_exceptions/conversation.rb /app/lib/custom_exceptions/conversation.rb
+COPY lib/custom_exceptions/conversation_assignment_not_allowed.rb /app/lib/custom_exceptions/conversation_assignment_not_allowed.rb
+COPY app/controllers/api/v1/accounts/conversations_controller.rb /app/app/controllers/api/v1/accounts/conversations_controller.rb
+COPY app/controllers/concerns/conversation_assignment_limit_concern.rb /app/app/controllers/concerns/conversation_assignment_limit_concern.rb
+COPY app/services/conversations/queue_order_service.rb /app/app/services/conversations/queue_order_service.rb
 COPY db/migrate/20261028120000_add_max_open_conversations_to_account_users.rb /app/db/migrate/20261028120000_add_max_open_conversations_to_account_users.rb
 COPY db/schema.rb /app/db/schema.rb
 COPY config/locales/en.yml /app/config/locales/en.yml

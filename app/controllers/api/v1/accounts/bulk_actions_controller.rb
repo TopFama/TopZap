@@ -14,23 +14,22 @@ class Api::V1::Accounts::BulkActionsController < Api::V1::Accounts::BaseControll
     else
       render json: { success: false }, status: :unprocessable_entity
     end
-  rescue CustomExceptions::Conversation::AssignmentNotAllowed => e
+  rescue CustomExceptions::ConversationAssignmentNotAllowed => e
     render_could_not_create_error(e.message)
   end
 
   private
 
   def validate_conversation_assignment!
-    assignee = Current.account.users.find_by(id: params.dig(:fields, :assignee_id))
+    fields = conversation_params[:fields] || {}
+    assignee = Current.account.users.find_by(id: fields[:assignee_id])
     return if assignee.blank?
 
-    conversations = Current.account.conversations.where(display_id: params[:ids])
-    Conversations::AssignmentRulesService.new(
-      account: Current.account,
-      actor: current_user,
-      assignee: assignee,
-      conversations: Conversations::PermissionFilterService.new(conversations, current_user, Current.account).perform
-    ).validate!
+    conversations = Conversations::PermissionFilterService.new(
+      Current.account.conversations.where(display_id: params[:ids]), current_user, Current.account
+    ).perform
+    Conversations::QueueOrderService.new(account: Current.account, actor: current_user, conversations: conversations).validate!
+    Conversations::AssignmentRulesService.new(account: Current.account, assignee: assignee).validate!(conversations, status: fields[:status].presence)
   end
 
   def normalized_type

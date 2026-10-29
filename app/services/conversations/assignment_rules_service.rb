@@ -1,54 +1,54 @@
-# Enforces manual assignment rules for agents:
-# - an agent can't hold more open conversations than their account user's max_open_conversations
-# - non-admin users can only pick unassigned conversations in the "Não atendido" tab order (oldest last activity first)
+# Enforces the account user's max_open_conversations on manual assignments by humans.
+# Auto assignment and reopenings triggered by contact messages don't go through it.
 class Conversations::AssignmentRulesService
-  def initialize(account:, actor:, assignee:, conversations:)
+  def initialize(account:, assignee:)
     @account = account
-    @actor = actor
     @assignee = assignee
-    @conversations = conversations.to_a
   end
 
-  def validate!
-    validate_open_conversations_limit!
-    validate_queue_order!
+  # Runs the writes in the block in a transaction and rolls them back if they leave the assignee over the limit.
+  # Locking the account user serializes concurrent assignments to the same agent.
+  def enforce!
+    ActiveRecord::Base.transaction do
+      next yield if limit.blank?
+
+      account_user.lock!
+      open_before = open_count
+      result = yield
+      open_after = open_count
+      raise_limit_reached if open_after > account_user.max_open_conversations && open_after > open_before
+      result
+    end
+  end
+
+  # For writes that happen later in a job (bulk actions): checks the conversations that would become open assignments.
+  def validate!(conversations, status: nil)
+    return if limit.blank?
+
+    incoming = conversations.count { |conversation| conversation.assignee_id != assignee.id && (status || conversation.status).to_s == 'open' }
+    raise_limit_reached if incoming.positive? && open_count + incoming > limit
   end
 
   private
 
-  attr_reader :account, :actor, :assignee, :conversations
+  attr_reader :account, :assignee
 
-  def validate_open_conversations_limit!
-    limit = account.account_users.find_by!(user_id: assignee.id).max_open_conversations
-    return if limit.blank?
-
-    incoming = conversations.count { |conversation| conversation.assignee_id != assignee.id && conversation.open? }
-    return if incoming.zero?
-    return if account.conversations.open.where(assignee_id: assignee.id).count + incoming <= limit
-
-    raise_not_allowed(I18n.t('errors.conversations.assignment.limit_reached', agent_name: assignee.available_name, limit: limit))
+  def account_user
+    @account_user ||= account.account_users.find_by!(user_id: assignee.id)
   end
 
-  def validate_queue_order!
-    return if account.account_users.find_by!(user_id: actor.id).administrator?
+  def limit
+    return if assignee.blank?
 
-    picked = conversations.select { |conversation| conversation.open? && conversation.assignee_id.nil? && conversation.assignee_agent_bot_id.nil? }
-    return if picked.empty?
-
-    skipped = unassigned_queue.where.not(id: picked.map(&:id))
-                              .where('conversations.last_activity_at < ?', picked.map(&:last_activity_at).max)
-    oldest_skipped = skipped.order(:last_activity_at, :id).first
-    return if oldest_skipped.blank?
-
-    raise_not_allowed(I18n.t('errors.conversations.assignment.oldest_first', display_id: oldest_skipped.display_id))
+    account_user.max_open_conversations
   end
 
-  def unassigned_queue
-    scope = account.conversations.open.unassigned
-    Conversations::PermissionFilterService.new(scope, actor, account).perform
+  def open_count
+    account.conversations.open.where(assignee_id: assignee.id).count
   end
 
-  def raise_not_allowed(message)
-    raise CustomExceptions::Conversation::AssignmentNotAllowed, { message: message }
+  def raise_limit_reached
+    message = I18n.t('errors.conversations.assignment.limit_reached', agent_name: assignee.available_name, limit: account_user.max_open_conversations)
+    raise CustomExceptions::ConversationAssignmentNotAllowed, { message: message }
   end
 end
