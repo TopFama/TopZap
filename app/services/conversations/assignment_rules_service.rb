@@ -22,7 +22,7 @@ class Conversations::AssignmentRulesService
     limit = account.account_users.find_by!(user_id: assignee.id).max_open_conversations
     return if limit.blank?
 
-    incoming = conversations.count { |conversation| conversation.assignee_id != assignee.id && (conversation.open? || conversation.pending?) }
+    incoming = conversations.count { |conversation| conversation.assignee_id != assignee.id && conversation.open? }
     return if incoming.zero?
     return if account.conversations.open.where(assignee_id: assignee.id).count + incoming <= limit
 
