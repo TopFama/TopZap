@@ -20,16 +20,29 @@ class Api::V1::Accounts::BulkActionsController < Api::V1::Accounts::BaseControll
 
   private
 
+  # Checks every agent that ends up holding the conversations, including current assignees on a status-only reopen
   def validate_conversation_assignment!
     fields = conversation_params[:fields] || {}
+    status = fields[:status].presence
+    return unless fields[:assignee_id].present? || status == 'open'
+
     assignee = Current.account.users.find_by(id: fields[:assignee_id])
+    validate_queue_order!(assignee)
+    bulk_conversations.group_by { |conversation| fields.key?(:assignee_id) ? assignee : conversation.assignee }.each do |holder, held|
+      Conversations::AssignmentRulesService.new(account: Current.account, assignee: holder).validate!(held, status: status)
+    end
+  end
+
+  def validate_queue_order!(assignee)
     return if assignee.blank?
 
-    conversations = Conversations::PermissionFilterService.new(
-      Current.account.conversations.where(display_id: params[:ids]), current_user, Current.account
+    Conversations::QueueOrderService.new(account: Current.account, actor: current_user, conversations: bulk_conversations).validate!
+  end
+
+  def bulk_conversations
+    @bulk_conversations ||= Conversations::PermissionFilterService.new(
+      Current.account.conversations.where(display_id: params[:ids]).includes(:assignee), current_user, Current.account
     ).perform
-    Conversations::QueueOrderService.new(account: Current.account, actor: current_user, conversations: conversations).validate!
-    Conversations::AssignmentRulesService.new(account: Current.account, assignee: assignee).validate!(conversations, status: fields[:status].presence)
   end
 
   def normalized_type
