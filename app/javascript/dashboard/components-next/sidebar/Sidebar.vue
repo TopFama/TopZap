@@ -22,6 +22,7 @@ import ChannelIcon from 'next/icon/ChannelIcon.vue';
 import EmojiIcon from 'next/emoji-icon-picker/EmojiIcon.vue';
 import SidebarAccountSwitcher from './SidebarAccountSwitcher.vue';
 import Logo from 'next/icon/Logo.vue';
+import QuickConversation from 'dashboard/components-next/NewConversation/QuickConversation.vue';
 import ComposeConversation from 'dashboard/components-next/NewConversation/ComposeConversation.vue';
 import {
   SIDEBAR_SORT_SECTIONS,
@@ -1063,6 +1064,7 @@ const menuItems = computed(() => {
             />
           </template>
         </ComposeConversation>
+        <QuickConversation />
       </div>
     </section>
     <nav

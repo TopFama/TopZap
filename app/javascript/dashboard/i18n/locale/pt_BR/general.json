@@ -15,5 +15,20 @@
   "CHOICE_TOGGLE": {
     "YES": "Sim",
     "NO": "Não"
+  },
+  "QUICK_CONVERSATION": {
+    "TITLE": "Nova mensagem rápida",
+    "DESCRIPTION": "Inicie uma nova conversa WhatsApp com um template aprovado. O status de entrega aparece na conversa.",
+    "INBOX": "Caixa de entrada",
+    "PHONE": "Telefone (+55, DDD e número)",
+    "NAME": "Nome do contato",
+    "CSAT": "Enviar pesquisa de avaliação (CSAT)",
+    "SEND": "Enviar template",
+    "NO_INBOX": "Nenhuma caixa WhatsApp Cloud acessível.",
+    "NO_CSAT": "Esta caixa não tem template CSAT aprovado no idioma configurado. Sincronize os templates ou selecione outra caixa.",
+    "TEMPLATE": "Selecione um template aprovado",
+    "INVALID_PHONE": "Informe +55 seguido de DDD e 8 ou 9 dígitos.",
+    "ERROR": "Não foi possível criar a conversa.",
+    "QUEUED": "Conversa criada. Template na fila de envio."
   }
 }

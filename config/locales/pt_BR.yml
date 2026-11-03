@@ -1091,3 +1091,11 @@ pt_BR:
         test_email:
           queued: 'O e-mail de teste está a caminho de %{email}. Peça ao usuário que verifique a caixa de entrada e a pasta de spam.'
           subject: 'E-mail de teste do suporte de %{brand_name}'
+
+  topzap:
+    quick_conversations:
+      invalid_channel: "Selecione uma caixa WhatsApp Cloud."
+      invalid_phone: "Informe um número brasileiro: +55 seguido de DDD e 8 ou 9 dígitos."
+      name_required: "O nome do contato é obrigatório."
+      invalid_csat: "send_csat deve ser true ou false."
+      template_required: "Selecione um template aprovado com o nome e idioma configurados. Sincronize os templates da caixa se necessário."

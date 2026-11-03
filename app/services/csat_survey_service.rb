@@ -1,4 +1,6 @@
 class CsatSurveyService
+  QUICK_CSAT_LABEL = 'csat_enviado'.freeze
+
   pattr_initialize [:conversation!]
 
   def perform
@@ -15,12 +17,38 @@ class CsatSurveyService
     end
   end
 
+  # Shared by resolution surveys and proactive surveys. The native reply job sends
+  # only this template after commit, then stores the provider source_id.
+  def build_whatsapp_template_survey
+    template = inbox.csat_config.fetch('template')
+    message = build_csat_message
+    message.additional_attributes = {
+      template_params: {
+        name: template['name'] || CsatTemplateNameService.csat_template_name(inbox.id), language: template['language'] || 'en',
+        processed_params: { buttons: [{ type: 'url', parameter: conversation.uuid }] }
+      }
+    }
+    message
+  end
+
+  def self.approved_whatsapp_template?(inbox, template)
+    return false unless template && template['name'].present? && template['language'].present?
+
+    Array(inbox.channel.message_templates).any? do |candidate|
+      candidate['name'] == template['name'] && candidate['language'] == template['language'] && candidate['status'] == 'APPROVED'
+    end
+  end
+
   private
 
   delegate :inbox, :contact, to: :conversation
 
   def should_send_csat_survey?
-    conversation_allows_csat? && csat_enabled? && !csat_already_sent? && csat_allowed_by_survey_rules?
+    conversation_allows_csat? && csat_enabled? && !csat_already_sent? && !quick_csat_already_delivered? && csat_allowed_by_survey_rules?
+  end
+
+  def quick_csat_already_delivered?
+    conversation.label_list.any? { |label| label.casecmp?(QUICK_CSAT_LABEL) }
   end
 
   def conversation_allows_csat?
@@ -110,7 +138,7 @@ class CsatSurveyService
 
     phone_number = conversation.contact_inbox.source_id
     template_info = build_template_info(template_name, template_config)
-    message = build_csat_message
+    message = build_whatsapp_template_survey
 
     message_id = inbox.channel.provider_service.send_template(phone_number, template_info, message)
 

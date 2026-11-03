@@ -1131,3 +1131,11 @@ en:
         test_email:
           queued: 'Test email on its way to %{email}. Ask the user to check their inbox and spam folder.'
           subject: 'Test email from %{brand_name} support'
+
+  topzap:
+    quick_conversations:
+      invalid_channel: "Choose a WhatsApp Cloud inbox."
+      invalid_phone: "Enter a Brazilian number: +55 followed by area code and 8 or 9 digits."
+      name_required: "Contact name is required."
+      invalid_csat: "send_csat must be true or false."
+      template_required: "Choose an approved template with the configured name and language. Sync inbox templates if needed."

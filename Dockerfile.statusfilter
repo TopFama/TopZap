@@ -26,3 +26,10 @@ COPY public/brand-assets/topzap_logo.png /app/public/brand-assets/topzap_logo.pn
 COPY public/manifest.json public/android-icon-144x144.png public/android-icon-192x192.png public/android-icon-36x36.png public/android-icon-48x48.png public/android-icon-72x72.png public/android-icon-96x96.png public/apple-icon-114x114.png public/apple-icon-120x120.png public/apple-icon-144x144.png public/apple-icon-152x152.png public/apple-icon-180x180.png public/apple-icon-57x57.png public/apple-icon-60x60.png public/apple-icon-72x72.png public/apple-icon-76x76.png public/apple-icon.png public/apple-icon-precomposed.png public/apple-touch-icon.png public/apple-touch-icon-precomposed.png public/favicon-16x16.png public/favicon-32x32.png public/favicon-512x512.png public/favicon-96x96.png public/favicon-badge-16x16.png public/favicon-badge-32x32.png public/favicon-badge-96x96.png public/ms-icon-144x144.png public/ms-icon-150x150.png public/ms-icon-310x310.png public/ms-icon-70x70.png /app/public/
 RUN rm -rf /app/public/vite
 COPY public/vite /app/public/vite
+
+# Quick WhatsApp conversations (frontend requires a Vite build before image build).
+COPY config/routes.rb /app/config/routes.rb
+COPY app/controllers/api/v1/accounts/topzap/quick_conversations_controller.rb /app/app/controllers/api/v1/accounts/topzap/quick_conversations_controller.rb
+COPY app/services/topzap/quick_conversation_service.rb /app/app/services/topzap/quick_conversation_service.rb
+COPY app/services/csat_survey_service.rb /app/app/services/csat_survey_service.rb
+COPY lib/custom_exceptions/quick_conversation_error.rb /app/lib/custom_exceptions/quick_conversation_error.rb
