@@ -67,18 +67,31 @@ class Topzap::QuickConversationService
   end
 
   def create_conversation(contact, contact_inbox)
-    conversation = inbox.conversations.build(
+    conversation = build_quick_conversation(contact, contact_inbox)
+    attach_conversation_overrides(conversation)
+    conversation.save!
+    ensure_desired_conversation_state!(conversation, contact)
+    conversation
+  end
+
+  def build_quick_conversation(contact, contact_inbox)
+    inbox.conversations.build(
       account: inbox.account,
       contact: contact,
       contact_inbox: contact_inbox,
       status: :open,
       assignee: user
     )
+  end
 
+  def attach_conversation_overrides(conversation)
     # Prevent bot from overriding status to pending in before_create,
     # while respecting resolved status if contact is blocked.
     def conversation.determine_conversation_status
-      self.status = :resolved and return if contact.blocked?
+      if contact.blocked?
+        self.status = :resolved
+        return
+      end
 
       self.status = :open
     end
@@ -92,15 +105,13 @@ class Topzap::QuickConversationService
     def conversation.run_legacy_auto_assignment
       nil
     end
+  end
 
-    conversation.save!
-
+  def ensure_desired_conversation_state!(conversation, contact)
     desired_status = contact.blocked? ? :resolved : :open
-    if conversation.status.to_sym != desired_status || conversation.assignee_id != user.id
-      conversation.update!(status: desired_status, assignee: user)
-    end
+    return if conversation.status.to_sym == desired_status && conversation.assignee_id == user.id
 
-    conversation
+    conversation.update!(status: desired_status, assignee: user)
   end
 
   def create_message(conversation)
@@ -108,7 +119,7 @@ class Topzap::QuickConversationService
       CsatSurveyService.new(conversation: conversation).build_whatsapp_template_survey.save!
     else
       Messages::MessageBuilder.new(user, conversation, { content: params[:content], message_type: 'outgoing',
-                                                       template_params: params[:template_params] }).perform
+                                                         template_params: params[:template_params] }).perform
     end
   end
 
@@ -124,32 +135,44 @@ class Topzap::QuickConversationService
       record.show_on_sidebar = true
       record.color = '#1f93ff'
     end
-  rescue ActiveRecord::RecordNotUnique
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
     inbox.account.labels.find_by!(title: CsatSurveyService::QUICK_CSAT_LABEL)
   end
 
   def ensure_inbox_survey_rule_tag!
     return unless inbox.csat_survey_enabled?
 
-    current_config = (inbox.csat_config || {}).deep_dup
-    rules = current_config['survey_rules']
+    rules = inbox.csat_config&.dig('survey_rules')
+    values = Array(rules&.dig('values'))
 
-    if rules.blank?
-      current_config['survey_rules'] = {
+    return if rules.present? && rules['operator'] != 'does_not_contain' && values.present?
+    return if rules.present? && rules['operator'] == 'does_not_contain' && values.include?(CsatSurveyService::QUICK_CSAT_LABEL)
+
+    update_inbox_survey_rules_with_lock!
+  end
+
+  def update_inbox_survey_rules_with_lock!
+    inbox.with_lock do
+      current_config = (inbox.csat_config || {}).deep_dup
+      current_rules = current_config['survey_rules']
+      current_values = Array(current_rules&.dig('values'))
+
+      next if current_rules.present? && current_rules['operator'] != 'does_not_contain' && current_values.present?
+
+      apply_survey_rule_tag_update!(current_config, current_rules, current_values)
+      inbox.update!(csat_config: current_config) if current_config != inbox.csat_config
+    end
+  end
+
+  def apply_survey_rule_tag_update!(config, rules, values)
+    if rules.blank? || values.blank?
+      config['survey_rules'] = {
         'operator' => 'does_not_contain',
         'values' => [CsatSurveyService::QUICK_CSAT_LABEL]
       }
-    elsif rules['operator'] == 'does_not_contain' || (rules['operator'].blank? && rules['values'].blank?)
-      current_config['survey_rules']['operator'] ||= 'does_not_contain'
-      current_values = Array(current_config['survey_rules']['values'])
-      unless current_values.include?(CsatSurveyService::QUICK_CSAT_LABEL)
-        current_config['survey_rules']['values'] = current_values + [CsatSurveyService::QUICK_CSAT_LABEL]
-      end
-    else
-      return
+    elsif rules['operator'] == 'does_not_contain' && !values.include?(CsatSurveyService::QUICK_CSAT_LABEL)
+      config['survey_rules']['values'] = values + [CsatSurveyService::QUICK_CSAT_LABEL]
     end
-
-    inbox.update!(csat_config: current_config) if current_config != inbox.csat_config
   end
 
   def fail_with(reason)

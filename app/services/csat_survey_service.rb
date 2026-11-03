@@ -48,7 +48,7 @@ class CsatSurveyService
   end
 
   def quick_csat_already_delivered?
-    conversation.label_list.include?(QUICK_CSAT_LABEL)
+    conversation.label_list.any? { |label| label.casecmp?(QUICK_CSAT_LABEL) }
   end
 
   def conversation_allows_csat?

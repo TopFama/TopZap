@@ -3,7 +3,11 @@ require 'rails_helper'
 RSpec.describe 'Quick WhatsApp conversations API', type: :request do
   let(:account) { create(:account) }
   let(:agent) { create(:user, account: account, role: :agent) }
-  let(:channel) { create(:channel_whatsapp, account: account, provider: 'whatsapp_cloud', message_templates: [template]) }
+  let(:channel) do
+    create(:channel_whatsapp, account: account, provider: 'whatsapp_cloud',
+                              validate_provider_config: false, sync_templates: false,
+                              message_templates: [template])
+  end
   let(:inbox) do
     create(:inbox, account: account, channel: channel, csat_survey_enabled: true,
                    csat_config: { template: { name: template['name'], language: 'pt_BR' }, message: 'Avalie seu atendimento' })
@@ -17,11 +21,10 @@ RSpec.describe 'Quick WhatsApp conversations API', type: :request do
   let(:params) { { inbox_id: inbox.id, phone_number: '+5511999998888', name: 'Cliente novo', send_csat: true } }
 
   before do
-    allow_any_instance_of(Channel::Whatsapp).to receive(:validate_provider_config).and_return(true)
     create(:inbox_member, user: agent, inbox: inbox)
   end
 
-  it 'creates the contact, digit-only source and an open assigned conversation with native CSAT' do
+  it 'creates the contact, digit-only source and an open assigned conversation' do
     expect do
       post path, headers: agent.create_new_auth_token, params: params, as: :json
     end.to change(account.contacts, :count).by(1)
@@ -31,11 +34,16 @@ RSpec.describe 'Quick WhatsApp conversations API', type: :request do
     expect(conversation.assignee).to eq(agent)
     expect(conversation.contact.name).to eq('Cliente novo')
     expect(conversation.contact_inbox.source_id).to eq('5511999998888')
+    expect(JSON.parse(response.body)['id']).to eq(conversation.display_id)
+  end
+
+  it 'attaches an outgoing CSAT template survey message with conversation uuid' do
+    post path, headers: agent.create_new_auth_token, params: params, as: :json
+    conversation = account.conversations.last
     message = conversation.messages.input_csat.last
     expect(message).to be_outgoing
     expect(message.content).to eq('Avalie seu atendimento')
     expect(message.additional_attributes.dig('template_params', 'processed_params', 'buttons', 0, 'parameter')).to eq(conversation.uuid)
-    expect(JSON.parse(response.body)['id']).to eq(conversation.display_id)
   end
 
   it 'reuses the existing contact without overwriting their name and always creates a new conversation' do
@@ -130,7 +138,7 @@ RSpec.describe 'Quick WhatsApp conversations API', type: :request do
   it 'enforces assignment capacity and rolls back when an active bot is configured on the inbox' do
     agent.account_users.find_by!(account: account).update!(max_open_conversations: 1)
     create(:conversation, account: account, inbox: inbox, assignee: agent, status: :open)
-    allow_any_instance_of(Inbox).to receive(:active_bot?).and_return(true)
+    create(:agent_bot_inbox, inbox: inbox, agent_bot: create(:agent_bot), status: :active)
 
     expect do
       post path, headers: agent.create_new_auth_token, params: params, as: :json
@@ -140,7 +148,7 @@ RSpec.describe 'Quick WhatsApp conversations API', type: :request do
   end
 
   it 'ensures the conversation is open even when an active agent bot is present' do
-    allow_any_instance_of(Inbox).to receive(:active_bot?).and_return(true)
+    create(:agent_bot_inbox, inbox: inbox, agent_bot: create(:agent_bot), status: :active)
 
     post path, headers: agent.create_new_auth_token, params: params, as: :json
     expect(response).to have_http_status(:created)
@@ -236,6 +244,20 @@ RSpec.describe 'Quick WhatsApp conversations API', type: :request do
     survey_rules = inbox.reload.csat_config['survey_rules']
     expect(survey_rules['operator']).to eq('does_not_contain')
     expect(survey_rules['values']).to contain_exactly('MKT - JULIA', 'csat_enviado')
+  end
+
+  it 'converts empty UI survey rules into does_not_contain with csat_enviado' do
+    inbox.update!(csat_config: inbox.csat_config.merge('survey_rules' => { 'operator' => 'contains', 'values' => [] }))
+
+    post path, headers: agent.create_new_auth_token, params: params, as: :json
+    expect(response).to have_http_status(:created)
+
+    conversation = account.conversations.last
+    expect(conversation.label_list).to include('csat_enviado')
+
+    survey_rules = inbox.reload.csat_config['survey_rules']
+    expect(survey_rules['operator']).to eq('does_not_contain')
+    expect(survey_rules['values']).to eq(['csat_enviado'])
   end
 
   it 'does not apply the csat_enviado tag when send_csat is false' do
