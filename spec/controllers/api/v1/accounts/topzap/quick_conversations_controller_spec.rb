@@ -126,4 +126,97 @@ RSpec.describe 'Quick WhatsApp conversations API', type: :request do
     post path, headers: agent.create_new_auth_token, params: params.merge(send_csat: false, content: 'Free text'), as: :json
     expect(response).to have_http_status(:unprocessable_entity)
   end
+
+  it 'enforces assignment capacity and rolls back when an active bot is configured on the inbox' do
+    agent.account_users.find_by!(account: account).update!(max_open_conversations: 1)
+    create(:conversation, account: account, inbox: inbox, assignee: agent, status: :open)
+    allow_any_instance_of(Inbox).to receive(:active_bot?).and_return(true)
+
+    expect do
+      post path, headers: agent.create_new_auth_token, params: params, as: :json
+    end.not_to change(account.conversations, :count)
+
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it 'ensures the conversation is open even when an active agent bot is present' do
+    allow_any_instance_of(Inbox).to receive(:active_bot?).and_return(true)
+
+    post path, headers: agent.create_new_auth_token, params: params, as: :json
+    expect(response).to have_http_status(:created)
+    conversation = account.conversations.last
+    expect(conversation).to be_open
+    expect(conversation.assignee).to eq(agent)
+  end
+
+  it 'preserves manual assignment to an administrator who is not an inbox member when auto-assignment is enabled' do
+    admin = create(:user, account: account, role: :administrator)
+    other_member = create(:user, account: account, role: :agent)
+    create(:inbox_member, user: other_member, inbox: inbox)
+    inbox.update!(enable_auto_assignment: true)
+
+    # Admin is authorized to access inbox via account admin role, but is NOT in inbox.members
+    expect(inbox.members).not_to include(admin)
+
+    post path, headers: admin.create_new_auth_token, params: params, as: :json
+    expect(response).to have_http_status(:created)
+    conversation = account.conversations.last
+    expect(conversation).to be_open
+    expect(conversation.assignee).to eq(admin)
+  end
+
+  it 'resolves an existing contact with 8-digit mobile when operator submits 9-digit format' do
+    existing_contact = create(:contact, account: account, name: 'Cliente Oito Digitos', phone_number: '+558588887777')
+    contact_inbox = create(:contact_inbox, contact: existing_contact, inbox: inbox, source_id: '558588887777')
+
+    expect do
+      post path, headers: agent.create_new_auth_token, params: params.merge(phone_number: '+5585988887777', name: 'Nome Novo Ignorado'), as: :json
+    end.not_to change(account.contacts, :count)
+
+    expect(response).to have_http_status(:created)
+    conversation = account.conversations.last
+    expect(conversation.contact).to eq(existing_contact)
+    expect(conversation.contact_inbox).to eq(contact_inbox)
+    expect(existing_contact.reload.name).to eq('Cliente Oito Digitos')
+  end
+
+  it 'resolves an existing contact with 9-digit mobile when operator submits 8-digit format' do
+    existing_contact = create(:contact, account: account, name: 'Cliente Nove Digitos', phone_number: '+5585988887777')
+    contact_inbox = create(:contact_inbox, contact: existing_contact, inbox: inbox, source_id: '5585988887777')
+
+    expect do
+      post path, headers: agent.create_new_auth_token, params: params.merge(phone_number: '+558588887777', name: 'Nome Novo Ignorado'), as: :json
+    end.not_to change(account.contacts, :count)
+
+    expect(response).to have_http_status(:created)
+    conversation = account.conversations.last
+    expect(conversation.contact).to eq(existing_contact)
+    expect(conversation.contact_inbox).to eq(contact_inbox)
+    expect(existing_contact.reload.name).to eq('Cliente Nove Digitos')
+  end
+
+  it 'does not treat 8-digit landlines as equivalent to mobile numbers' do
+    landline_contact = create(:contact, account: account, name: 'Telefone Fixo', phone_number: '+558532221111')
+    create(:contact_inbox, contact: landline_contact, inbox: inbox, source_id: '558532221111')
+
+    # Submitting a mobile number with the same suffix must not match the landline contact
+    expect do
+      post path, headers: agent.create_new_auth_token, params: params.merge(phone_number: '+5585932221111', name: 'Cliente Celular'), as: :json
+    end.to change(account.contacts, :count).by(1)
+
+    expect(response).to have_http_status(:created)
+    conversation = account.conversations.last
+    expect(conversation.contact).not_to eq(landline_contact)
+    expect(conversation.contact.phone_number).to eq('+5585932221111')
+  end
+
+  it 'creates conversation as resolved when the contact is blocked' do
+    blocked_contact = create(:contact, account: account, name: 'Contato Bloqueado', phone_number: params[:phone_number], blocked: true)
+
+    post path, headers: agent.create_new_auth_token, params: params, as: :json
+    expect(response).to have_http_status(:created)
+    conversation = account.conversations.last
+    expect(conversation).to be_resolved
+    expect(conversation.contact).to eq(blocked_contact)
+  end
 end
