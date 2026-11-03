@@ -23,13 +23,21 @@ sends the template after database commit and records the provider source_id.
 Delivery errors remain visible in the conversation. The API's 201 means created
 and queued, not delivered. Successful job replay is skipped by native source_id
 protection. The public survey controller and native response builder/report are
-unchanged; the survey retains the native 14-day response limit. Resolving a quick
-conversation does not add another survey because it already has input_csat.
+unchanged; the survey retains the native 14-day response limit.
+
+To prevent duplicate CSAT sends upon later conversation resolution, quick CSAT
+conversations ensure the `csat_enviado` label exists on the account (`show_on_sidebar: true`),
+tag the conversation with `csat_enviado`, and register `csat_enviado` in the inbox's
+`csat_config['survey_rules']` under `does_not_contain` while preserving existing rules
+(such as `"MKT - JULIA"`). Additionally, `CsatSurveyService#should_send_csat_survey?`
+explicitly blocks resolution surveys if the conversation carries `csat_enviado`
+(even if an inbox operator is configured with `contains`), guaranteeing that resolving
+the conversation never triggers a second survey or window-expired activity message.
 
 With `send_csat: false`, `content` and `template_params` use the existing WhatsApp
 parser and message builder. The supplied template must also match an approved
-name/language pair. Free text without a template is rejected. CSAT reporting is
-only enabled when the survey checkbox is selected. No migrations are needed.
+name/language pair. Free text without a template is rejected. The `csat_enviado` tag
+is not applied, allowing normal resolution surveys if configured. No migrations are needed.
 
 ## Packaging
 

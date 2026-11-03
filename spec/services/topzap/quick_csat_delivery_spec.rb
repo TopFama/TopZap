@@ -30,4 +30,19 @@ RSpec.describe CsatSurveyService do
     # Replaying the job must not send the same successful survey again.
     SendReplyJob.perform_now(message.id)
   end
+
+  it 'blocks resolution CSAT surveys when the conversation has the csat_enviado label' do
+    conversation.update!(status: :resolved)
+    conversation.add_labels([described_class::QUICK_CSAT_LABEL])
+    # Even if inbox survey rules would otherwise allow (e.g. contains operator)
+    inbox.update!(csat_config: inbox.csat_config.merge('survey_rules' => { 'operator' => 'contains', 'values' => [described_class::QUICK_CSAT_LABEL] }))
+
+    provider = instance_double(Whatsapp::Providers::WhatsappCloudService)
+    allow_any_instance_of(Channel::Whatsapp).to receive(:provider_service).and_return(provider)
+    expect(provider).not_to receive(:send_template)
+
+    expect do
+      described_class.new(conversation: conversation).perform
+    end.not_to change(conversation.messages, :count)
+  end
 end

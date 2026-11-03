@@ -219,4 +219,46 @@ RSpec.describe 'Quick WhatsApp conversations API', type: :request do
     expect(conversation).to be_resolved
     expect(conversation.contact).to eq(blocked_contact)
   end
+
+  it 'tags the conversation with csat_enviado, ensures the account label, and updates inbox survey_rules preserving existing values' do
+    inbox.update!(csat_config: inbox.csat_config.merge('survey_rules' => { 'operator' => 'does_not_contain', 'values' => ['MKT - JULIA'] }))
+
+    post path, headers: agent.create_new_auth_token, params: params, as: :json
+    expect(response).to have_http_status(:created)
+
+    conversation = account.conversations.last
+    expect(conversation.label_list).to include('csat_enviado')
+
+    label = account.labels.find_by(title: 'csat_enviado')
+    expect(label).to be_present
+    expect(label.show_on_sidebar).to be(true)
+
+    survey_rules = inbox.reload.csat_config['survey_rules']
+    expect(survey_rules['operator']).to eq('does_not_contain')
+    expect(survey_rules['values']).to contain_exactly('MKT - JULIA', 'csat_enviado')
+  end
+
+  it 'does not apply the csat_enviado tag when send_csat is false' do
+    payload = params.merge(send_csat: false, content: 'Template',
+                           template_params: { name: template['name'], language: 'pt_BR', processed_params: {} })
+    post path, headers: agent.create_new_auth_token, params: payload, as: :json
+    expect(response).to have_http_status(:created)
+
+    conversation = account.conversations.last
+    expect(conversation.label_list).not_to include('csat_enviado')
+  end
+
+  it 'prevents duplicate CSAT survey sending when the quick CSAT conversation is later resolved' do
+    inbox.update!(csat_config: inbox.csat_config.merge('survey_rules' => { 'operator' => 'contains', 'values' => ['csat_enviado'] }))
+    post path, headers: agent.create_new_auth_token, params: params, as: :json
+    conversation = account.conversations.last
+
+    expect(conversation.messages.input_csat.count).to eq(1)
+
+    # Resolving the conversation must not trigger another survey or activity message
+    conversation.update!(status: :resolved)
+    expect do
+      CsatSurveyService.new(conversation: conversation).perform
+    end.not_to change(conversation.messages, :count)
+  end
 end

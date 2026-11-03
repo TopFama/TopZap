@@ -9,6 +9,7 @@ class Topzap::QuickConversationService
         contact, contact_inbox = resolve_contact_and_inbox
         conversation = create_conversation(contact, contact_inbox)
         create_message(conversation)
+        tag_quick_csat_conversation!(conversation) if params[:send_csat]
         conversation
       end
     end
@@ -109,6 +110,46 @@ class Topzap::QuickConversationService
       Messages::MessageBuilder.new(user, conversation, { content: params[:content], message_type: 'outgoing',
                                                        template_params: params[:template_params] }).perform
     end
+  end
+
+  def tag_quick_csat_conversation!(conversation)
+    ensure_quick_csat_label!
+    conversation.add_labels([CsatSurveyService::QUICK_CSAT_LABEL])
+    ensure_inbox_survey_rule_tag!
+  end
+
+  def ensure_quick_csat_label!
+    inbox.account.labels.find_or_create_by!(title: CsatSurveyService::QUICK_CSAT_LABEL) do |record|
+      record.description = 'CSAT enviado na abertura rápida — não reenviar ao resolver'
+      record.show_on_sidebar = true
+      record.color = '#1f93ff'
+    end
+  rescue ActiveRecord::RecordNotUnique
+    inbox.account.labels.find_by!(title: CsatSurveyService::QUICK_CSAT_LABEL)
+  end
+
+  def ensure_inbox_survey_rule_tag!
+    return unless inbox.csat_survey_enabled?
+
+    current_config = (inbox.csat_config || {}).deep_dup
+    rules = current_config['survey_rules']
+
+    if rules.blank?
+      current_config['survey_rules'] = {
+        'operator' => 'does_not_contain',
+        'values' => [CsatSurveyService::QUICK_CSAT_LABEL]
+      }
+    elsif rules['operator'] == 'does_not_contain' || (rules['operator'].blank? && rules['values'].blank?)
+      current_config['survey_rules']['operator'] ||= 'does_not_contain'
+      current_values = Array(current_config['survey_rules']['values'])
+      unless current_values.include?(CsatSurveyService::QUICK_CSAT_LABEL)
+        current_config['survey_rules']['values'] = current_values + [CsatSurveyService::QUICK_CSAT_LABEL]
+      end
+    else
+      return
+    end
+
+    inbox.update!(csat_config: current_config) if current_config != inbox.csat_config
   end
 
   def fail_with(reason)

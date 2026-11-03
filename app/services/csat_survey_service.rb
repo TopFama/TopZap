@@ -1,4 +1,6 @@
 class CsatSurveyService
+  QUICK_CSAT_LABEL = 'csat_enviado'.freeze
+
   pattr_initialize [:conversation!]
 
   def perform
@@ -42,7 +44,11 @@ class CsatSurveyService
   delegate :inbox, :contact, to: :conversation
 
   def should_send_csat_survey?
-    conversation_allows_csat? && csat_enabled? && !csat_already_sent? && csat_allowed_by_survey_rules?
+    conversation_allows_csat? && csat_enabled? && !csat_already_sent? && !quick_csat_already_delivered? && csat_allowed_by_survey_rules?
+  end
+
+  def quick_csat_already_delivered?
+    conversation.label_list.include?(QUICK_CSAT_LABEL)
   end
 
   def conversation_allows_csat?
