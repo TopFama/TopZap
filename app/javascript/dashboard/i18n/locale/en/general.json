@@ -15,5 +15,20 @@
   "CHOICE_TOGGLE": {
     "YES": "Yes",
     "NO": "No"
+  },
+  "QUICK_CONVERSATION": {
+    "TITLE": "New quick message",
+    "DESCRIPTION": "Start a new WhatsApp conversation with an approved template. Delivery status is shown in the conversation.",
+    "INBOX": "Inbox",
+    "PHONE": "Phone (+55, area code and number)",
+    "NAME": "Contact name",
+    "CSAT": "Send satisfaction survey (CSAT)",
+    "SEND": "Send template",
+    "NO_INBOX": "No accessible WhatsApp Cloud inboxes.",
+    "NO_CSAT": "This inbox has no approved CSAT template in the configured language. Sync its templates or choose another inbox.",
+    "TEMPLATE": "Choose an approved template",
+    "INVALID_PHONE": "Enter +55 followed by area code and 8 or 9 digits.",
+    "ERROR": "Could not create the conversation.",
+    "QUEUED": "Conversation created. Template queued for delivery."
   }
 }
