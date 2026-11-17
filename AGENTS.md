@@ -137,3 +137,11 @@ Practical checklist for any change impacting core logic or public APIs
 ## Branding / White-labeling note
 
 - For user-facing strings that currently contain "Chatwoot" but should adapt to branded/self-hosted installs, prefer applying `replaceInstallationName` from `shared/composables/useBranding` in the UI layer (for example tooltip and suggestion labels) instead of adding hardcoded brand-specific copy.
+
+## General PR Hygiene & Privacy
+
+- **Focused scope:** Keep PRs small and focused; clearly describe any user-facing or behavioral changes in the PR summary.
+- **Checks & CI:** Run relevant project checks (`pnpm eslint`, `bundle exec rubocop`, tests/specs, build) and ensure CI passes before merging; never skip/weaken checks or fabricate verification results.
+- **Visual changes:** Include screenshots or recordings for UI changes using only synthetic/demo data.
+- **Docs & changelog:** Update relevant documentation and `CHANGELOG.md` (when applicable) in the same PR. Keep `AGENTS.md` and `CLAUDE.md` synchronized.
+- **Secrets & privacy:** Never commit or expose personal data, credentials, `.env` files, tokens, or private session/production data in code, commits, screenshots, examples, or logs.
